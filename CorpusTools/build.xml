@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding='UTF-8'?>
+<project name="CorpusTools" default="dist" basedir=".">
+	<description>
+		CorpusTools build file
+	</description>
+	
+	<property name="src.dir" 	 value="src"/>
+	<property name="lib.dir"	 value="lib"/>
+        <property name="img.dir.name"	 value="img"/>
+        <property name="img.dir"	 value="${src.dir}/${img.dir.name}"/>
+        <property name="gtsrc.dir" 	 value="../GrammarTools/src"/>
+        <property name="gtlib.dir"	 value="../GrammarTools/lib"/>
+	<property name="build.dir" 	 value="build"/>
+	<property name="classes.dir"     value="${build.dir}/classes"/>
+	<property name="dist.dir" 	 value="dist"/>
+        <property name="distlib.dir"	 value="${dist.dir}/lib"/>
+        <property name="distlib.name"	 value="lib"/>
+        <property name="javadoc.dir"     value="${dist.dir}/javadoc"/>
+        <property name="jar.name"        value="CorpusTools"/>
+        <property name="maxmem"          value="2048m"/>
+               
+        <!-- create path including all jars in lib dir -->
+	<path id="classpath">
+            <fileset dir="${lib.dir}" includes="**/*.jar"/>
+            <fileset dir="${gtlib.dir}" includes="**/*.jar"/>
+	</path>
+
+        <!-- initialize -->
+	<target name="-init">
+            <mkdir dir="${build.dir}"/>
+            <tstamp>
+                <format property="TODAY" pattern="yyyy-MM-dd"/>
+            </tstamp>
+            <property name="jar.path" value="${dist.dir}/${jar.name}-${TODAY}.jar"/>
+	</target>
+
+        <!-- compile project -->
+	<target name="compile" depends="-init" description="compile project">
+            <condition property="debug">
+                <istrue value="${debug}"/>
+            </condition>
+            <mkdir dir="${classes.dir}"/>
+            <javac
+                srcdir="${src.dir}" 
+                destdir="${classes.dir}" 
+                classpathref="classpath" 
+                debug="${debug}"
+                includeantruntime="false">
+                <src path="${gtsrc.dir}" />
+            </javac>
+	</target>
+                        
+        <!-- compile with extra checks -->
+	<target name="lint" depends="-init,clean" description="compile project with extra warnings">
+            <mkdir dir="${classes.dir}"/>
+            <javac srcdir="${src.dir}" destdir="${classes.dir}" classpathref="classpath" deprecation="on" includeantruntime="false">
+                <src path="${gtsrc.dir}" />
+                <compilerarg value="-Xlint"/>
+                <compilerarg value="-Xlint:unchecked"/>
+            </javac>
+	</target>
+
+        <!-- create distribution files in dist dir-->
+	<target name="dist" depends="compile" description="create executable jar">
+            <mkdir dir="${dist.dir}"/>
+
+            <!-- generate space-separated list of all libraries -->
+            <pathconvert property="dep.lst" pathsep=" ">
+                <mapper>
+                    <chainedmapper>
+                            <!-- remove absolute path -->
+                        <flattenmapper />
+                            <!-- add lib/ prefix -->
+                        <globmapper from="*.jar" to="${distlib.name}/*.jar" />
+                    </chainedmapper>
+                </mapper>
+                <path refid="classpath"/>
+            </pathconvert>
+            
+            <!-- copy images -->
+            <mkdir dir="${classes.dir}/${img.dir.name}"/>
+            <copy todir="${classes.dir}/${img.dir.name}" filtering="off">
+                <fileset dir="${img.dir}" includes="**/*.png"/>
+            </copy>
+            
+            <!-- create the jar and its manifest -->
+            <jar destfile="${jar.path}" basedir="${classes.dir}">
+                <manifest>
+                    <attribute name="Created-By" value=""/>
+                    <attribute name="Implementation-Title" value="CorpusTools"/>
+                    <attribute name="Main-Class" value="corpustools.CorpusToolsApp"/>
+                    <attribute name="Class-Path" value="${dep.lst}" />
+                </manifest>
+            </jar>
+
+            <!-- copy jar to dist dir -->
+            <copy file="${jar.path}" tofile="${dist.dir}/${jar.name}.jar"/>
+
+            <!-- copy libraries -->
+            <mkdir dir="${distlib.dir}" />
+            <copy todir="${distlib.dir}" filtering="off">
+                <flattenmapper />
+                <fileset dir="${lib.dir}" includes="**/*.jar" />
+                <fileset dir="${gtlib.dir}" includes="**/*.jar" />
+            </copy>
+            
+	</target>
+        
+        <!-- compile project with debug -->
+	<target name="debug" depends="clean" description="compile project with debug information">
+            <property name="debug" value="true"/>
+            <antcall target="dist"/>
+	</target>
+
+        <!-- generate javadocs -->
+        <target name="javadoc" description="generate javadocs">
+            <javadoc packagenames="corpustools.*"
+                   sourcepath="src"
+                   classpathref="classpath"
+                   excludepackagenames=""
+                   defaultexcludes="yes"
+                   destdir="${javadoc.dir}"
+                   author="true"
+                   version="true"
+                   use="true"
+                   windowtitle="CorpusTools API"
+                   doctitle="&lt;h1&gt;CorpusTools API&lt;/h1&gt;"
+                   bottom="&lt;em&gt;Work in progress&lt;em&gt;"/>
+        </target>
+
+        <!-- run the project with proper environment -->
+        <target name="run" depends="dist" description="run application">
+            <java jar="${dist.dir}/${jar.name}.jar"
+                fork="true"
+                failonerror="true" maxmemory="${maxmem}"/>
+        </target>
+	
+	<target name="clean" description="clean up build files">
+		<delete dir="${classes.dir}}"/>
+		<delete dir="${build.dir}"/>
+		<delete dir="${dist.dir}"/>
+	</target>
+
+</project>
